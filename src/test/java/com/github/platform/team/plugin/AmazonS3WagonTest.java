@@ -243,20 +243,11 @@ public class AmazonS3WagonTest {
         this.wagon.putResource(file, FILE_NAME, this.transferProgress);
 
         ArgumentCaptor<PutObjectRequest> putObjectRequest = ArgumentCaptor.forClass(PutObjectRequest.class);
-        verify(this.amazonS3, times(3)).putObject(putObjectRequest.capture());
+        verify(this.amazonS3, times(1)).putObject(putObjectRequest.capture());
 
         List<PutObjectRequest> putObjectRequests = putObjectRequest.getAllValues();
-        for (int i = 0; i < 2; i++) {
-            assertEquals(BUCKET_NAME, putObjectRequests.get(i).getBucketName());
-            assertNotNull(putObjectRequests.get(i).getInputStream());
-            assertEquals(0, putObjectRequests.get(i).getMetadata().getContentLength());
-            assertEquals(CannedAccessControlList.PublicRead, putObjectRequests.get(i).getCannedAcl());
-        }
-
-        assertEquals("foo/", putObjectRequests.get(0).getKey());
-        assertEquals("foo/bar/", putObjectRequests.get(1).getKey());
-
-        PutObjectRequest fileRequest = putObjectRequests.get(2);
+        
+        PutObjectRequest fileRequest = putObjectRequests.get(0);
         assertEquals(BUCKET_NAME, fileRequest.getBucketName());
         assertEquals(BASE_DIRECTORY + FILE_NAME, fileRequest.getKey());
         assertNotNull(fileRequest.getInputStream());
@@ -276,8 +267,7 @@ public class AmazonS3WagonTest {
 
     @Test(expected = TransferFailedException.class)
     public void putResourcePutException() throws TransferFailedException, ResourceDoesNotExistException {
-        when(this.amazonS3.putObject(any(PutObjectRequest.class))).thenReturn(null, (PutObjectResult) null)
-                .thenThrow(new AmazonServiceException(""));
+        when(this.amazonS3.putObject(any(PutObjectRequest.class))).thenThrow(new AmazonServiceException(""));
         File file = new File("src/test/resources/test.txt");
         this.wagon.putResource(file, FILE_NAME, this.transferProgress);
     }
