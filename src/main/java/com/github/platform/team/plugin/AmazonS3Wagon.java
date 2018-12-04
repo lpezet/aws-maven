@@ -275,7 +275,7 @@ public final class AmazonS3Wagon extends AbstractWagon {
             ResourceDoesNotExistException {
         String key = getKey(this.baseDirectory, destination);
 
-        mkdirs(amazonS3, this.bucketName, key, 0);
+        //mkdirs(amazonS3, this.bucketName, key, 0);
 
         InputStream in = null;
         try {
