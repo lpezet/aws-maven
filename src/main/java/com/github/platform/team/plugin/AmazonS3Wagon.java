@@ -16,6 +16,25 @@
 
 package com.github.platform.team.plugin;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.maven.wagon.ResourceDoesNotExistException;
+import org.apache.maven.wagon.TransferFailedException;
+import org.apache.maven.wagon.authentication.AuthenticationException;
+import org.apache.maven.wagon.authentication.AuthenticationInfo;
+import org.apache.maven.wagon.proxy.ProxyInfoProvider;
+import org.apache.maven.wagon.repository.Repository;
+
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -29,6 +48,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.SSECustomerKey;
 import com.github.platform.team.plugin.aws.AWSMavenCredentialsProviderChain;
 import com.github.platform.team.plugin.data.TransferProgress;
 import com.github.platform.team.plugin.data.transfer.TransferProgressFileInputStream;
@@ -36,24 +56,6 @@ import com.github.platform.team.plugin.data.transfer.TransferProgressFileOutputS
 import com.github.platform.team.plugin.maven.AbstractWagon;
 import com.github.platform.team.plugin.util.IOUtils;
 import com.github.platform.team.plugin.util.S3Utils;
-import org.apache.maven.wagon.ResourceDoesNotExistException;
-import org.apache.maven.wagon.TransferFailedException;
-import org.apache.maven.wagon.authentication.AuthenticationException;
-import org.apache.maven.wagon.authentication.AuthenticationInfo;
-import org.apache.maven.wagon.proxy.ProxyInfoProvider;
-import org.apache.maven.wagon.repository.Repository;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * An implementation of the Maven Wagon interface that allows you to access the Amazon S3 service. URLs that reference
@@ -75,6 +77,12 @@ public final class AmazonS3Wagon extends AbstractWagon {
     private volatile String bucketName;
 
     private volatile String baseDirectory;
+    
+    private volatile SSECustomerKey sseCustomerKey;
+    
+    private volatile String sseAlgorithm;
+    
+    private volatile boolean sse;
 
     /**
      * Creates a new instance of the wagon
@@ -159,10 +167,23 @@ public final class AmazonS3Wagon extends AbstractWagon {
     protected void connectToRepository(Repository repository, AuthenticationInfo authenticationInfo,
                                        ProxyInfoProvider proxyInfoProvider) throws AuthenticationException {
         if (this.amazonS3 == null) {
+        	String sseParam = repository.getParameter( "sse" );
+        	sse = (sseParam != null && sseParam.trim().length() > 0);
+        	sseAlgorithm = sseParam;
+        	
+        	String sseCustomerKeyValParam = repository.getParameter( "sse-c-key" ); //base64EncodedKey
+        	if ( sseCustomerKeyValParam != null && sseCustomerKeyValParam.trim().length() > 0 ) {
+        		sse = true;
+        		sseCustomerKey = new SSECustomerKey( sseCustomerKeyValParam );
+        	}
+        	
+        	System.out.println("### SSE? " + sse + ", " + sseAlgorithm);
+        	System.out.println("### SSE Customer? " + (sseCustomerKey != null) );
+        	
             AWSMavenCredentialsProviderChain credentialsProvider =
                     new AWSMavenCredentialsProviderChain(authenticationInfo);
             ClientConfiguration clientConfiguration = S3Utils.getClientConfiguration(proxyInfoProvider);
-
+            
             this.bucketName = S3Utils.getBucketName(repository);
             this.baseDirectory = S3Utils.getBaseDirectory(repository);
 
@@ -265,10 +286,13 @@ public final class AmazonS3Wagon extends AbstractWagon {
             ObjectMetadata objectMetadata = new ObjectMetadata();
             objectMetadata.setContentLength(source.length());
             objectMetadata.setContentType(Mimetypes.getInstance().getMimetype(source));
-
+            
             in = new TransferProgressFileInputStream(source, transferProgress);
 
-            this.amazonS3.putObject(new PutObjectRequest(this.bucketName, key, in, objectMetadata));
+            PutObjectRequest request = new PutObjectRequest(this.bucketName, key, in, objectMetadata);
+            applyServerSideEncryption( request );
+            
+            this.amazonS3.putObject(request);
         } catch (AmazonServiceException e) {
             throw new TransferFailedException(String.format("Cannot write file to '%s'", destination), e);
         } catch (FileNotFoundException e) {
@@ -277,4 +301,17 @@ public final class AmazonS3Wagon extends AbstractWagon {
             IOUtils.closeQuietly(in);
         }
     }
+
+	private void applyServerSideEncryption( PutObjectRequest pRequest ) {
+		System.out.println("###2 SSE? " + sse + ", " + sseAlgorithm);
+    	System.out.println("###2 SSE Customer? " + (sseCustomerKey != null) );
+    	
+		
+		if ( ! sse ) return;
+		if ( sseCustomerKey == null ) {
+			pRequest.getMetadata().setSSEAlgorithm( sseAlgorithm  );
+		} else {
+			pRequest.setSSECustomerKey( sseCustomerKey );
+		}
+	}
 }
