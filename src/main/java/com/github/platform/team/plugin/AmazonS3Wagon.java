@@ -34,6 +34,8 @@ import org.apache.maven.wagon.authentication.AuthenticationException;
 import org.apache.maven.wagon.authentication.AuthenticationInfo;
 import org.apache.maven.wagon.proxy.ProxyInfoProvider;
 import org.apache.maven.wagon.repository.Repository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
@@ -85,6 +87,8 @@ public final class AmazonS3Wagon extends AbstractWagon {
     private volatile String sseAlgorithm;
     
     private volatile boolean sse;
+    
+    private Logger logger = LoggerFactory.getLogger( this.getClass() );
 
     /**
      * Creates a new instance of the wagon
@@ -169,12 +173,14 @@ public final class AmazonS3Wagon extends AbstractWagon {
     protected void connectToRepository(Repository repository, AuthenticationInfo authenticationInfo,
                                        ProxyInfoProvider proxyInfoProvider) throws AuthenticationException {
         if (this.amazonS3 == null) {
-        	if ( sseBase64Key != null && sseBase64Key.trim().length() > 0) {
-        		sseCustomerKey = new SSECustomerKey( sseBase64Key );
+        	try {
+        		if ( sseBase64Key != null && sseBase64Key.trim().length() > 0) {
+        			if ( logger.isDebugEnabled() ) logger.debug( "Using customer key for server-side encryption." );
+        	        sseCustomerKey = new SSECustomerKey( sseBase64Key );
+	        	}
+        	} catch (Exception e) {
+        		logger.error( "Unable to load SSE Customer Key. Check settings.xml and make sure key is base64 encoded.", e );
         	}
-        	
-        	System.out.println("### SSE? " + sse + ", " + sseAlgorithm);
-        	System.out.println("### SSE Customer? " + (sseCustomerKey != null) );
         	
             AWSMavenCredentialsProviderChain credentialsProvider =
                     new AWSMavenCredentialsProviderChain(authenticationInfo);
@@ -276,7 +282,6 @@ public final class AmazonS3Wagon extends AbstractWagon {
         String key = getKey(this.baseDirectory, destination);
 
         //mkdirs(amazonS3, this.bucketName, key, 0);
-
         InputStream in = null;
         try {
             ObjectMetadata objectMetadata = new ObjectMetadata();
@@ -299,9 +304,10 @@ public final class AmazonS3Wagon extends AbstractWagon {
     }
 
 	private void applyServerSideEncryption( PutObjectRequest pRequest ) {
-		System.out.println("###2 SSE? " + sse + ", " + sseAlgorithm);
-    	System.out.println("###2 SSE Customer? " + (sseCustomerKey != null) );
-    	
+		if ( logger.isDebugEnabled() ) {
+			logger.debug( "Using server-side encryption? {} (Algorithm={}), CustomerKey provided? {}", sse, sseAlgorithm, (sseCustomerKey != null) );
+		}
+		
 		if ( ! sse ) return;
 		
 		if ( sseCustomerKey == null ) {
