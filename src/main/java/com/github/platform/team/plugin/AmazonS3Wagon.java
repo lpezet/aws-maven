@@ -83,6 +83,14 @@ public final class AmazonS3Wagon extends AbstractWagon {
     private volatile String sseAlgorithm;
     
     private volatile boolean sse;
+    
+    public void setSseAlgorithm( String pSseAlgorithm ) {
+		sseAlgorithm = pSseAlgorithm;
+	}
+    
+    public String getSseAlgorithm() {
+		return sseAlgorithm;
+	}
 
     /**
      * Creates a new instance of the wagon
@@ -167,6 +175,7 @@ public final class AmazonS3Wagon extends AbstractWagon {
     protected void connectToRepository(Repository repository, AuthenticationInfo authenticationInfo,
                                        ProxyInfoProvider proxyInfoProvider) throws AuthenticationException {
         if (this.amazonS3 == null) {
+        	System.out.println("### Before SSE Algo? " + sseAlgorithm);
         	String sseParam = repository.getParameter( "sse" );
         	sse = (sseParam != null && sseParam.trim().length() > 0);
         	sseAlgorithm = sseParam;
