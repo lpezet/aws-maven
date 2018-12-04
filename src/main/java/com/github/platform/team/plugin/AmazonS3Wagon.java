@@ -80,17 +80,11 @@ public final class AmazonS3Wagon extends AbstractWagon {
     
     private volatile SSECustomerKey sseCustomerKey;
     
+    private volatile String sseBase64Key;
+    
     private volatile String sseAlgorithm;
     
     private volatile boolean sse;
-    
-    public void setSseAlgorithm( String pSseAlgorithm ) {
-		sseAlgorithm = pSseAlgorithm;
-	}
-    
-    public String getSseAlgorithm() {
-		return sseAlgorithm;
-	}
 
     /**
      * Creates a new instance of the wagon
@@ -175,15 +169,8 @@ public final class AmazonS3Wagon extends AbstractWagon {
     protected void connectToRepository(Repository repository, AuthenticationInfo authenticationInfo,
                                        ProxyInfoProvider proxyInfoProvider) throws AuthenticationException {
         if (this.amazonS3 == null) {
-        	System.out.println("### Before SSE Algo? " + sseAlgorithm);
-        	String sseParam = repository.getParameter( "sse" );
-        	sse = (sseParam != null && sseParam.trim().length() > 0);
-        	sseAlgorithm = sseParam;
-        	
-        	String sseCustomerKeyValParam = repository.getParameter( "sse-c-key" ); //base64EncodedKey
-        	if ( sseCustomerKeyValParam != null && sseCustomerKeyValParam.trim().length() > 0 ) {
-        		sse = true;
-        		sseCustomerKey = new SSECustomerKey( sseCustomerKeyValParam );
+        	if ( sseBase64Key != null && sseBase64Key.trim().length() > 0) {
+        		sseCustomerKey = new SSECustomerKey( sseBase64Key );
         	}
         	
         	System.out.println("### SSE? " + sse + ", " + sseAlgorithm);
@@ -315,12 +302,36 @@ public final class AmazonS3Wagon extends AbstractWagon {
 		System.out.println("###2 SSE? " + sse + ", " + sseAlgorithm);
     	System.out.println("###2 SSE Customer? " + (sseCustomerKey != null) );
     	
-		
 		if ( ! sse ) return;
+		
 		if ( sseCustomerKey == null ) {
 			pRequest.getMetadata().setSSEAlgorithm( sseAlgorithm  );
 		} else {
 			pRequest.setSSECustomerKey( sseCustomerKey );
 		}
+	}
+	
+	public void setSseAlgorithm( String pSseAlgorithm ) {
+		sseAlgorithm = pSseAlgorithm;
+	}
+    
+    public String getSseAlgorithm() {
+		return sseAlgorithm;
+	}
+    
+    public void setSse( boolean pSse ) {
+		sse = pSse;
+	}
+    
+    public boolean isSse() {
+		return sse;
+	}
+    
+    public void setSseBase64Key( String pSseBase64Key ) {
+		sseBase64Key = pSseBase64Key;
+	}
+    
+    public String getSseBase64Key() {
+		return sseBase64Key;
 	}
 }
