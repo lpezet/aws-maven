@@ -6,7 +6,7 @@
 	<groupId>com.github.lpezet</groupId>
 	<artifactId>aws-maven</artifactId>
 	<packaging>jar</packaging>
-	<version>6.0.0</version>
+	<version>6.0.1-SNAPSHOT</version>
 	<name>Amazon Web Services S3 Maven Wagon Support</name>
 	<description>Standard Maven wagon support for s3:// urls</description>
 
@@ -201,7 +201,7 @@
 	<scm>
 		<connection>scm:git:git@github.com:lpezet/aws-maven.git</connection>
 		<url>https://github.com/lpezet/aws-maven</url>
-	  <tag>aws-maven-6.0.0</tag>
+	  <tag>HEAD</tag>
   </scm>
 
 	<ciManagement>
