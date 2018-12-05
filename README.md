@@ -8,17 +8,17 @@
 
 
 ## Description
-This project is a fork of a [Maven Wagon](https://github.com/spring-projects/aws-maven) for [Amazon S3](http://aws.amazon.com/s3/).  In order to to publish artifacts to an S3 bucket, the user (as identified by their access key) must be listed as an owner on the bucket.
+This project is a fork of a [Maven Wagon](https://github.com/platform-team/aws-maven) which is also a fork of the original [AWS Maven](https://github.com/spring-projects/aws-maven) for [Amazon S3](http://aws.amazon.com/s3/).
 
 
 ## Why this fork?
-- original repo not maintained for a long time but we updated fork to the latest libs.
-- we fixed some of issues that blocks others and us.
-- no support from maintainers of original repo. 
+- to support Server Side Encryption and more
+- don't understand why s3 "directories" have to be PUBLIC_READ.
+- hopefully for a pull request into platform-team's aws-maven.
 
 
 ## Usage
-To publish Maven artifacts to S3 a build extension must be defined in a project's `pom.xml`.  The latest version of the wagon can be found on the [`aws-maven`](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.github.platform-team%22%20AND%20a%3A%22aws-maven%22) page in Maven Central.
+To publish Maven artifacts to S3 a build extension must be defined in a project's `pom.xml`.  The latest version of the wagon can be found on the [`aws-maven`](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.github.lpezet%22%20AND%20a%3A%22aws-maven%22) page in Maven Central.
 
 ```xml
 <project>
@@ -28,7 +28,7 @@ To publish Maven artifacts to S3 a build extension must be defined in a project'
     <extensions>
       ...
       <extension>
-        <groupId>com.github.platform-team</groupId>
+        <groupId>com.github.lpezet</groupId>
         <artifactId>aws-maven</artifactId>
         <version>6.0.0</version>
       </extension>
@@ -61,7 +61,36 @@ Once the build extension is configured distribution management repositories can 
 </project>
 ```
 
-Finally the `~/.m2/settings.xml` must be updated to include access and secret keys for the account. The access key should be used to populate the `username` element, and the secret access key should be used to populate the `password` element.
+### AWS Credentials
+
+Credentials to use for AWS S3 Client can be specifie in different ways:
+
+* in `~/.m2/settings.xml` when defining servers for snapshot and release repositories. The access key should be used to populate the `username` element, and the secret access key should be used to populate the `password` element.
+* `aws.accessKeyId` and `aws.secretKey` [system properties](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/SystemPropertiesCredentialsProvider.html)
+* `AWS_ACCESS_KEY_ID` (or `AWS_ACCESS_KEY`) and `AWS_SECRET_KEY` (or `AWS_SECRET_ACCESS_KEY`) [environment variables](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/EnvironmentVariableCredentialsProvider.html)
+* The Amazon EC2 [Instance Metadata Service](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/EC2ContainerCredentialsProviderWrapper.html) 
+
+Finally the `~/.m2/settings.xml` must be updated to include access and secret keys for the account. 
+The access key should be used to populate the `username` element, and the secret access key should be used to populate the `password` element.
+
+#### AWS STS (MFA)
+
+If using MFA, it's possible to have AWS S3 Client pick up the profile from your local `~/.aws/credentials` file.
+In this use case, don't specify `username` and `password` in your `~/.m2/settings.xml`.
+Best is to store AWS STS info into a profile and specify the profile as environment variable.
+For example:
+
+```
+$ aws-mfa myprofile 123456
+$ env AWS_PROFILE=myprofile-mfa AWS_REGION=us-east-1 mvn clean deploy
+```
+
+where `aws-mfa` is a script that would use AK and SK from profile `myprofile` to request a session token and store the results in `~/.aws/credentials` under profile `myprofile-mfa`.
+
+
+
+
+#### settings.xml
 
 ```xml
 <settings>
@@ -73,16 +102,15 @@ Finally the `~/.m2/settings.xml` must be updated to include access and secret ke
       <username>0123456789ABCDEFGHIJ</username>
       <password>0123456789abcdefghijklmnopqrstuvwxyzABCD</password>
       <configuration>
-        <wagonProvider>s3</wagonProvider>
+        <sse>true</sse> <!-- (optional) whether or not to use server-side encryption (sse) -->
+		<sseAlgorithm>AES256</sseAlgorithm> <!-- (optional) algorithm to use for sse. Either AES256 or aws:kms -->
+		<sseBase64Key>ABCDEF1234567890</sseBase64Key> <!-- (optional) base64 encoded key to use for sse when not using sseAlgorithm -->
       </configuration>
     </server>
     <server>
       <id>aws-snapshot</id>
-      <username>0123456789ABCDEFGHIJ</username>
-      <password>0123456789abcdefghijklmnopqrstuvwxyzABCD</password>
-      <configuration>
-        <wagonProvider>s3</wagonProvider>
-      </configuration>
+      <!-- see above -->
+      ...
     </server>
     ...
   </servers>
@@ -112,13 +140,6 @@ For being able to connect behind an HTTP proxy you need to add the following con
   ...
 </settings>
 ```
-
-Alternatively, the access and secret keys for the account can be provided using (applied in order below)
-
-* `aws.accessKeyId` and `aws.secretKey` [system properties](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/SystemPropertiesCredentialsProvider.html)
-* `AWS_ACCESS_KEY_ID` (or `AWS_ACCESS_KEY`) and `AWS_SECRET_KEY` (or `AWS_SECRET_ACCESS_KEY`) [environment variables](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/EnvironmentVariableCredentialsProvider.html)
-* `aws_access_key_id` and `aws_secret_access_key` of [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html)
-* The Amazon EC2 [Instance Metadata Service](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/EC2ContainerCredentialsProviderWrapper.html)
 
 ## Making Artifacts Public
 This wagon doesn't set an explict ACL for each artifact that is uploaded. Instead you should create an AWS Bucket Policy to set permissions on objects. A bucket policy can be set in the [AWS Console](https://console.aws.amazon.com/s3) and can be generated using the [AWS Policy Generator](http://awspolicygen.s3.amazonaws.com/policygen.html).
@@ -217,7 +238,7 @@ aws s3api put-bucket-policy --bucket $BUCKET --policy "$POLICY"
 
 ## License
 
-Copyright 2018-Present Platform Team.
+Copyright 2018-Present LPezet.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
