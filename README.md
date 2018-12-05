@@ -229,6 +229,20 @@ EOF
 aws s3api put-bucket-policy --bucket $BUCKET --policy "$POLICY"
 ```
 
+## Release process
+
+Create release and upload artifacts (jar, javadoc and source code) to OSS Sonatype (Nexus):
+
+```
+mvn clean release:prepare
+mvn release:perform
+```
+
+Go to [OSS Sonatype](https://oss.sonatype.org) and check *Staging Repository* and make sure everything is there (i.e. source code, artifact, and javadoc).
+Click *Close* to close repository and go through verification process.
+If failed, *Drop* repository and address issues (might want to delete git tags, revert versions, etc.).
+If succeeded, *Release* repo.
+
 ## Release Notes
 * `6.0.0`
     - Updated to the latest versions of aws-sdk and maven-wagon.
