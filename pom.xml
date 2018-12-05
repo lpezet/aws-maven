@@ -174,11 +174,11 @@
 				<version>2.9.1</version>
 				<configuration>
 					<attach>true</attach>
-					<source>1.6</source>
+					<source>1.8</source>
 					<quiet>true</quiet>
 					<bottom>lpezet</bottom>
 					<detectOfflineLinks>false</detectOfflineLinks>
-					<javadocVersion>1.6</javadocVersion>
+					<javadocVersion>1.8</javadocVersion>
 					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
