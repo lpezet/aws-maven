@@ -1,11 +1,10 @@
+
 # AWS Maven Wagon
-[![GitHub version](https://badge.fury.io/gh/platform-team%2Faws-maven.svg)](http://badge.fury.io/gh/platform-team%2Faws-maven)
+[![GitHub version](https://badge.fury.io/gh/lpezet%2Faws-maven.svg)](http://badge.fury.io/gh/platform-team%2Faws-maven)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-[![Dependency Status](https://www.versioneye.com/user/projects/5a8ab8e30fb24f3a2ef5b4be/badge.svg?style=flat-square)](https://www.versioneye.com/user/projects/5a8ab8e30fb24f3a2ef5b4be)
-[![Build Status](https://travis-ci.org/platform-team/aws-maven.svg?branch=master)](https://travis-ci.org/platform-team/aws-maven)
-[![Coverage Status](https://coveralls.io/repos/github/platform-team/aws-maven/badge.svg?branch=master)](https://coveralls.io/github/platform-team/aws-maven?branch=master)
-
+[![Build Status](https://travis-ci.org/lpezet/aws-maven.svg?branch=master)](https://travis-ci.org/lpezet/aws-maven)
+[![Coverage Status](https://coveralls.io/repos/github/lpezet/aws-maven/badge.svg?branch=master)](https://coveralls.io/github/lpezet/aws-maven?branch=master)
 
 ## Description
 This project is a fork of a [Maven Wagon](https://github.com/platform-team/aws-maven) which is also a fork of the original [AWS Maven](https://github.com/spring-projects/aws-maven) for [Amazon S3](http://aws.amazon.com/s3/).
